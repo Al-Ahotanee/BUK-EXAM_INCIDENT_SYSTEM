@@ -1,0 +1,8 @@
+.git
+.gitignore
+.devcontainer
+uploads/*
+!uploads/.gitkeep
+*.md
+.env
+.env.example
