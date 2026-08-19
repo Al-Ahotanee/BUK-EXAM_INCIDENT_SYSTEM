@@ -114,6 +114,76 @@ try {
             sendJson(['success' => true, 'data' => $stmt->fetchAll()]);
             break;
 
+        // --- Staff Account Requests ---
+        case 'request_account':
+            validateCSRF($pdo);
+            $role = $input['role_requested'] ?? 'invigilator';
+            $allowedRoles = ['exam_officer','invigilator','hod','committee'];
+            if (!in_array($role, $allowedRoles, true)) sendJson(['success'=>false,'message'=>'Select a valid staff role'], 422);
+            $staffId = trim((string)($input['staff_id'] ?? ''));
+            $fullName = trim((string)($input['full_name'] ?? ''));
+            $email = strtolower(trim((string)($input['email'] ?? '')));
+            $password = (string)($input['password'] ?? '');
+            if ($staffId === '' || $fullName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) sendJson(['success'=>false,'message'=>'Provide a valid staff ID, name, BUK email, and password of at least 8 characters'], 422);
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email)=LOWER(?) OR staff_id=?");
+            $stmt->execute([$email, $staffId]);
+            if ($stmt->fetch()) sendJson(['success'=>false,'message'=>'An account already exists for this email or staff ID'], 409);
+            $stmt = $pdo->prepare("SELECT id FROM account_requests WHERE LOWER(email)=LOWER(?) AND status='pending'");
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) sendJson(['success'=>false,'message'=>'A pending account request already exists for this email'], 409);
+            $stmt = $pdo->prepare("INSERT INTO account_requests (staff_id, full_name, email, phone, password_hash, role_requested, faculty_id, department_id, justification) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$staffId, $fullName, $email, $input['phone'] ?? null, password_hash($password, PASSWORD_BCRYPT, ['cost'=>12]), $role, !empty($input['faculty_id']) ? $input['faculty_id'] : null, !empty($input['department_id']) ? $input['department_id'] : null, $input['justification'] ?? null]);
+            sendJson(['success'=>true,'message'=>'Account request submitted for administrator approval']);
+            break;
+
+        case 'get_account_requests':
+            requireRole(['admin']);
+            $status = $input['status'] ?? 'pending';
+            if ($status === 'all') {
+                $stmt = $pdo->query("SELECT ar.*, reviewer.full_name AS reviewer_name, f.name AS faculty_name, d.name AS department_name FROM account_requests ar LEFT JOIN users reviewer ON reviewer.id=ar.reviewed_by LEFT JOIN faculties f ON f.id=ar.faculty_id LEFT JOIN departments d ON d.id=ar.department_id ORDER BY ar.created_at DESC");
+            } else {
+                $stmt = $pdo->prepare("SELECT ar.*, reviewer.full_name AS reviewer_name, f.name AS faculty_name, d.name AS department_name FROM account_requests ar LEFT JOIN users reviewer ON reviewer.id=ar.reviewed_by LEFT JOIN faculties f ON f.id=ar.faculty_id LEFT JOIN departments d ON d.id=ar.department_id WHERE ar.status=? ORDER BY ar.created_at DESC");
+                $stmt->execute([$status]);
+            }
+            $rows = $stmt->fetchAll();
+            foreach ($rows as &$row) unset($row['password_hash']);
+            sendJson(['success'=>true,'data'=>$rows]);
+            break;
+
+        case 'approve_account_request':
+            $admin = requireRole(['admin']);
+            validateCSRF($pdo);
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("SELECT * FROM account_requests WHERE id=? AND status='pending' FOR UPDATE");
+                $stmt->execute([$input['id']]);
+                $request = $stmt->fetch();
+                if (!$request) sendJson(['success'=>false,'message'=>'Pending account request not found'], 404);
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email)=LOWER(?) OR staff_id=?");
+                $stmt->execute([$request['email'], $request['staff_id']]);
+                if ($stmt->fetch()) sendJson(['success'=>false,'message'=>'A user with this email or staff ID already exists'], 409);
+                $stmt = $pdo->prepare("INSERT INTO users (staff_id, full_name, email, password_hash, role, faculty_id, department_id, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$request['staff_id'],$request['full_name'],$request['email'],$request['password_hash'],$request['role_requested'],$request['faculty_id'],$request['department_id'],$request['phone']]);
+                $newUserId = $pdo->lastInsertId();
+                $stmt = $pdo->prepare("UPDATE account_requests SET status='approved', reviewed_by=?, reviewed_at=NOW(), decision_note=? WHERE id=?");
+                $stmt->execute([$admin['id'], $input['decision_note'] ?? 'Approved by administrator', $request['id']]);
+                $pdo->prepare("INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT (user_id) DO NOTHING")->execute([$newUserId]);
+                $pdo->commit();
+                sendJson(['success'=>true,'message'=>'Account approved and created']);
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $e;
+            }
+            break;
+
+        case 'reject_account_request':
+            $admin = requireRole(['admin']);
+            validateCSRF($pdo);
+            $stmt = $pdo->prepare("UPDATE account_requests SET status='rejected', reviewed_by=?, reviewed_at=NOW(), decision_note=? WHERE id=? AND status='pending'");
+            $stmt->execute([$admin['id'], $input['decision_note'] ?? 'Request declined by administrator', $input['id']]);
+            sendJson(['success'=>true,'message'=>'Account request declined']);
+            break;
+
         // --- Admin: User Management (SRS 5.6) ---
         case 'get_users':
             requireRole(['admin']);

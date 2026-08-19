@@ -15,7 +15,8 @@ const iconMap = {
   announcements: 'fa-bullhorn',
   settings: 'fa-sliders',
   drafts: 'fa-file-pen',
-  operations: 'fa-diagram-project'
+  operations: 'fa-diagram-project',
+  users: 'fa-user-shield'
 };
 function App() {
   const [user, setUser] = useState(null),
@@ -115,7 +116,7 @@ function App() {
   }[user.role] || user.role;
   const nav = [['overview', 'Overview'], ['work', 'My Work'], ['incidents', 'Incidents'], ['cases', 'Cases'], ['hearings', 'Hearings'], ['calendar', 'Calendar'], ['reports', 'Reports'], ['operations', 'Operations']];
   if (['invigilator', 'exam_officer', 'admin'].includes(user.role)) nav.push(['drafts', 'Drafts']);
-  if (user.role === 'admin') nav.push(['announcements', 'Announcements'], ['settings', 'Settings']);
+  if (user.role === 'admin') nav.push(['announcements', 'Announcements'], ['users', 'User management'], ['settings', 'Settings']);
   return React.createElement("div", {
     className: "modern-shell"
   }, React.createElement("aside", {
@@ -309,6 +310,11 @@ function App() {
   }), " ", page === 'settings' && React.createElement(Settings, {
     api: api,
     user: user,
+    notify: notify
+  }), " ", page === 'users' && user.role === 'admin' && React.createElement(UserManagement, {
+    api: api,
+    user: user,
+    lookups: lookups,
     notify: notify
   }))), modal && React.createElement(Modal, {
     ...modal,
@@ -1330,6 +1336,46 @@ function Announcements({
     className: "fas fa-bullhorn"
   }), "Publish announcement"))));
 }
+function UserManagement({api, user, lookups, notify}) {
+  const h = React.createElement;
+  const [tab,setTab] = useState('requests');
+  const [users,setUsers] = useState([]);
+  const [requests,setRequests] = useState([]);
+  const [show,setShow] = useState(false);
+  const [loading,setLoading] = useState(true);
+  const blank={staff_id:'',full_name:'',email:'',password:'',role:'invigilator',faculty_id:'',department_id:''};
+  const [form,setForm] = useState(blank);
+  const load = async()=>{setLoading(true); try { const [u,r]=await Promise.all([api('get_users'),api('get_account_requests',{status:'all'})]); setUsers(u.data||[]); setRequests(r.data||[]); } finally {setLoading(false)} };
+  useEffect(()=>{load()},[]);
+  const field=(label,key,type='text')=>h('div',{className:'field'},h('label',null,label),h('input',{type,value:form[key]||'',onChange:e=>setForm({...form,[key]:e.target.value}),placeholder:label}));
+  const select=(label,key,options)=>h('div',{className:'field'},h('label',null,label),h('select',{value:form[key]||'',onChange:e=>setForm({...form,[key]:e.target.value})},options.map(o=>h('option',{key:o.value,value:o.value},o.label))));
+  const create=async()=>{await api('create_user',form); notify('User created successfully'); setShow(false); setForm(blank); load()};
+  const approve=async id=>{await api('approve_account_request',{id}); notify('Account approved and created'); load()};
+  const reject=async id=>{await api('reject_account_request',{id}); notify('Account request declined'); load()};
+  const roleOptions=[{value:'invigilator',label:'Invigilator'},{value:'exam_officer',label:'Examination Officer'},{value:'hod',label:'HOD / Dean'},{value:'committee',label:'Committee Member'},{value:'admin',label:'Administrator'}];
+  return h(React.Fragment,null,h(SectionHead,{eyebrow:'Administration',title:'User management',sub:'Create staff accounts and review new access requests from the modern workspace.',action:h('button',{className:'primary-button',onClick:()=>{setForm(blank);setShow(true)}},h('i',{className:'fas fa-user-plus'}),' Add user')}),h('div',{className:'grid-3',style:{marginBottom:18}},h('div',{className:'stat-card'},h('div',{className:'stat-icon blue'},h('i',{className:'fas fa-users'})),h('div',null,h('strong',null,users.length),h('span',null,'Active directory'))),h('div',{className:'stat-card'},h('div',{className:'stat-icon gold'},h('i',{className:'fas fa-user-clock'})),h('div',null,h('strong',null,requests.filter(x=>x.status==='pending').length),h('span',null,'Pending requests'))),h('div',{className:'stat-card'},h('div',{className:'stat-icon green'},h('i',{className:'fas fa-user-check'})),h('div',null,h('strong',null,requests.filter(x=>x.status==='approved').length),h('span',null,'Approved requests')))),h('div',{className:'panel'},h('div',{className:'panel-head'},h('div',null,h('div',{className:'panel-title'},'Staff access centre'),h('div',{className:'panel-sub'},'Review requests and manage the BUK EIMS directory.')),h('div',{className:'segmented'},h('button',{className:tab==='requests'?'active':'',onClick:()=>setTab('requests')},'Account requests'),h('button',{className:tab==='directory'?'active':'',onClick:()=>setTab('directory')},'User directory'))),h('div',{className:'panel-body'},loading?h('div',{className:'empty-state'},h('i',{className:'fas fa-circle-notch fa-spin'}),' Loading user records...'):tab==='requests'?(requests.length?h('div',{className:'stack-list'},requests.map(r=>h('div',{className:'list-row',key:r.id},h('div',null,h('div',{className:'row-title'},r.full_name),h('div',{className:'row-meta'},r.email,' · ',r.staff_id,' · ',(r.role_requested||'').replace('_',' ')),h('div',{className:'row-meta'},r.department_name||'No department selected',' · ',new Date(r.created_at).toLocaleString())),h('div',{style:{display:'flex',gap:7,alignItems:'center'}},h('span',{className:`status-pill ${r.status}`},r.status),r.status==='pending'&&h(React.Fragment,null,h('button',{className:'primary-button',onClick:()=>approve(r.id)},h('i',{className:'fas fa-check'}),' Approve'),h('button',{className:'ghost-button',onClick:()=>reject(r.id)},h('i',{className:'fas fa-xmark'}),' Decline')))))):h('div',{className:'empty-state'},h('i',{className:'fas fa-user-clock'}),' No account requests yet.')):h('div',{className:'table-wrap'},h('table',null,h('thead',null,h('tr',null,h('th',null,'Staff'),h('th',null,'Email'),h('th',null,'Role'),h('th',null,'Status'))),h('tbody',null,users.map(u=>h('tr',{key:u.id},h('td',null,h('strong',null,u.full_name),h('small',null,u.staff_id)),h('td',null,u.email),h('td',null,(u.role||'').replace('_',' ')),h('td',null,h('span',{className:`status-pill ${u.is_active?'active':'disabled'}`},u.is_active?'Active':'Disabled'))))))))),show&&h('div',{className:'modal-backdrop'},h('div',{className:'modern-modal'},h('div',{className:'modal-head'},h('div',null,h('div',{className:'panel-title'},'Create staff account'),h('div',{className:'panel-sub'},'Add a trusted member directly to the BUK EIMS directory.')),h('button',{className:'icon-button',onClick:()=>setShow(false)},h('i',{className:'fas fa-xmark'}))),h('div',{className:'modal-body'},field('Staff ID','staff_id'),field('Full name','full_name'),field('BUK email','email','email'),select('System role','role',roleOptions),field('Initial password','password','password'),h('div',{className:'modal-actions'},h('button',{className:'ghost-button',onClick:()=>setShow(false)},'Cancel'),h('button',{className:'primary-button',onClick:create},h('i',{className:'fas fa-user-plus'}),' Create account'))))));
+}
+
+function UserManagement({api, user, lookups, notify}) {
+  const h = React.createElement;
+  const [tab,setTab] = useState('requests');
+  const [users,setUsers] = useState([]);
+  const [requests,setRequests] = useState([]);
+  const [show,setShow] = useState(false);
+  const [loading,setLoading] = useState(true);
+  const blank={staff_id:'',full_name:'',email:'',password:'',role:'invigilator',faculty_id:'',department_id:''};
+  const [form,setForm] = useState(blank);
+  const load = async()=>{setLoading(true); try { const [u,r]=await Promise.all([api('get_users'),api('get_account_requests',{status:'all'})]); setUsers(u.data||[]); setRequests(r.data||[]); } finally {setLoading(false)} };
+  useEffect(()=>{load()},[]);
+  const field=(label,key,type='text')=>h('div',{className:'field'},h('label',null,label),h('input',{type,value:form[key]||'',onChange:e=>setForm({...form,[key]:e.target.value}),placeholder:label}));
+  const select=(label,key,options)=>h('div',{className:'field'},h('label',null,label),h('select',{value:form[key]||'',onChange:e=>setForm({...form,[key]:e.target.value})},options.map(o=>h('option',{key:o.value,value:o.value},o.label))));
+  const create=async()=>{await api('create_user',form); notify('User created successfully'); setShow(false); setForm(blank); load()};
+  const approve=async id=>{await api('approve_account_request',{id}); notify('Account approved and created'); load()};
+  const reject=async id=>{await api('reject_account_request',{id}); notify('Account request declined'); load()};
+  const roleOptions=[{value:'invigilator',label:'Invigilator'},{value:'exam_officer',label:'Examination Officer'},{value:'hod',label:'HOD / Dean'},{value:'committee',label:'Committee Member'},{value:'admin',label:'Administrator'}];
+  return h(React.Fragment,null,h(SectionHead,{eyebrow:'Administration',title:'User management',sub:'Create staff accounts and review new access requests from the modern workspace.',action:h('button',{className:'primary-button',onClick:()=>{setForm(blank);setShow(true)}},h('i',{className:'fas fa-user-plus'}),' Add user')}),h('div',{className:'grid-3',style:{marginBottom:18}},h('div',{className:'stat-card'},h('div',{className:'stat-icon blue'},h('i',{className:'fas fa-users'})),h('div',null,h('strong',null,users.length),h('span',null,'Active directory'))),h('div',{className:'stat-card'},h('div',{className:'stat-icon gold'},h('i',{className:'fas fa-user-clock'})),h('div',null,h('strong',null,requests.filter(x=>x.status==='pending').length),h('span',null,'Pending requests'))),h('div',{className:'stat-card'},h('div',{className:'stat-icon green'},h('i',{className:'fas fa-user-check'})),h('div',null,h('strong',null,requests.filter(x=>x.status==='approved').length),h('span',null,'Approved requests')))),h('div',{className:'panel'},h('div',{className:'panel-head'},h('div',null,h('div',{className:'panel-title'},'Staff access centre'),h('div',{className:'panel-sub'},'Review requests and manage the BUK EIMS directory.')),h('div',{className:'segmented'},h('button',{className:tab==='requests'?'active':'',onClick:()=>setTab('requests')},'Account requests'),h('button',{className:tab==='directory'?'active':'',onClick:()=>setTab('directory')},'User directory'))),h('div',{className:'panel-body'},loading?h('div',{className:'empty-state'},h('i',{className:'fas fa-circle-notch fa-spin'}),' Loading user records...'):tab==='requests'?(requests.length?h('div',{className:'stack-list'},requests.map(r=>h('div',{className:'list-row',key:r.id},h('div',null,h('div',{className:'row-title'},r.full_name),h('div',{className:'row-meta'},r.email,' · ',r.staff_id,' · ',(r.role_requested||'').replace('_',' ')),h('div',{className:'row-meta'},r.department_name||'No department selected',' · ',new Date(r.created_at).toLocaleString())),h('div',{style:{display:'flex',gap:7,alignItems:'center'}},h('span',{className:`status-pill ${r.status}`},r.status),r.status==='pending'&&h(React.Fragment,null,h('button',{className:'primary-button',onClick:()=>approve(r.id)},h('i',{className:'fas fa-check'}),' Approve'),h('button',{className:'ghost-button',onClick:()=>reject(r.id)},h('i',{className:'fas fa-xmark'}),' Decline')))))):h('div',{className:'empty-state'},h('i',{className:'fas fa-user-clock'}),' No account requests yet.')):h('div',{className:'table-wrap'},h('table',null,h('thead',null,h('tr',null,h('th',null,'Staff'),h('th',null,'Email'),h('th',null,'Role'),h('th',null,'Status'))),h('tbody',null,users.map(u=>h('tr',{key:u.id},h('td',null,h('strong',null,u.full_name),h('small',null,u.staff_id)),h('td',null,u.email),h('td',null,(u.role||'').replace('_',' ')),h('td',null,h('span',{className:`status-pill ${u.is_active?'active':'disabled'}`},u.is_active?'Active':'Disabled'))))))))),show&&h('div',{className:'modal-backdrop'},h('div',{className:'modern-modal'},h('div',{className:'modal-head'},h('div',null,h('div',{className:'panel-title'},'Create staff account'),h('div',{className:'panel-sub'},'Add a trusted member directly to the BUK EIMS directory.')),h('button',{className:'icon-button',onClick:()=>setShow(false)},h('i',{className:'fas fa-xmark'}))),h('div',{className:'modal-body'},field('Staff ID','staff_id'),field('Full name','full_name'),field('BUK email','email','email'),select('System role','role',roleOptions),field('Initial password','password','password'),h('div',{className:'modal-actions'},h('button',{className:'ghost-button',onClick:()=>setShow(false)},'Cancel'),h('button',{className:'primary-button',onClick:create},h('i',{className:'fas fa-user-plus'}),' Create account'))))));
+}
+
 function Settings({
   api,
   user,

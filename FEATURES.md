@@ -57,3 +57,10 @@ Administrators can publish announcements, configure academic sessions, manage wo
 ## Sandbox test
 
 The sandbox test environment uses the local PostgreSQL seed accounts documented in `DEPLOY.md`. The application has been tested for PHP syntax, API bootstrap, database table creation, dashboard rendering, operations-console rendering, saved-draft creation, and browser-console stability.
+
+
+## Account requests and modern user management
+
+The public landing page now includes **Request a staff account**. A prospective staff member can provide a staff ID, name, BUK email, requested role, password, and access justification. The request is stored as pending and cannot be used to sign in until an administrator approves it.
+
+Administrators can open **User management** directly inside the modern workspace. The screen provides pending-request counts, an account-request review queue, approve and decline actions, an active user directory, and a direct create-user form. Approved requests create an active user account and initialize workspace preferences automatically.

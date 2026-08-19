@@ -163,3 +163,12 @@ See `FEATURES.md` for the functional feature map and role-by-role usage summary.
 ## 12. Public landing page
 
 The public `index.php` now uses the same BUK EIMS design language as the authenticated workspace. It includes the BUK-branded hero, operations preview, capabilities, workflow explanation, role-specific value sections, staff sign-in panel, responsive mobile navigation, and the new `assets/landing.css` and `assets/landing.js` files. The staff sign-in still calls `api.php?action=login` and redirects to `workspace.php` after successful authentication.
+
+
+## 13. Staff account requests and approval
+
+The public landing page includes a **Need access? Request a staff account** link beneath the staff sign-in form. New staff members submit their institutional details and requested role. Requests are stored with a `pending` status and are not login-enabled until an administrator approves them.
+
+An administrator signs in, opens the modern workspace, selects **User management**, and opens the **Account requests** tab. The administrator can approve or decline each request. Approval creates the active user and initializes their workspace preferences. The **User directory** tab shows active and disabled staff accounts.
+
+For production use, administrators should verify staff identity and role eligibility before approving requests. The self-registration workflow does not grant administrator privileges; administrator accounts must be created by an existing administrator through the direct user-management form.
