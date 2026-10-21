@@ -1,0 +1,20 @@
+# BUK EIMS Upload Security Controls
+# Prevent any script execution inside evidence upload directory
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# Deny direct web access to script/executable extensions
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|phar|sh|bash|pl|cgi|exe|py)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+Options -Indexes -ExecCGI
