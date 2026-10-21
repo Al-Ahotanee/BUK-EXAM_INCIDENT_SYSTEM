@@ -134,13 +134,16 @@ body {
 }
 
 .nav-button {
-  background: var(--buk-blue);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(11, 92, 142, 0.2);
+  background: #ffffff;
+  border: 1.5px solid var(--buk-blue);
+  color: var(--buk-blue);
+  box-shadow: none;
 }
 
 .nav-button:hover, .hero-button.gold:hover {
-  background: #084c76;
+  background: #f8fafc;
+  border-color: #084c76;
+  color: #084c76;
 }
 
 .menu-button {
@@ -228,19 +231,22 @@ body {
 }
 
 .hero-button.white {
-  background: var(--buk-blue);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(11, 92, 142, 0.22);
+  background: #ffffff;
+  border: 1.5px solid var(--buk-blue);
+  color: var(--buk-blue);
+  box-shadow: none;
 }
 
 .hero-button.white:hover {
-  background: #084c76;
+  background: #f8fafc;
+  border-color: #084c76;
+  color: #084c76;
 }
 
 .hero-button.gold {
   background: #ffffff;
-  border-color: #fde047;
-  color: #a16207;
+  border: 1.5px solid var(--buk-blue);
+  color: var(--buk-blue);
 }
 
 .outline-button {
@@ -346,8 +352,8 @@ body {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  border: 1px solid var(--line);
   color: var(--buk-blue);
   font-weight: 800;
   font-size: 11px;
@@ -402,7 +408,8 @@ body {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: #eff6ff;
+  background: #ffffff;
+  border: 1px solid var(--line);
   color: var(--buk-blue);
   font-size: 11px;
 }
@@ -540,8 +547,8 @@ body {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  border: 1px solid var(--line);
   color: var(--buk-blue);
   font-size: 17px;
   margin-bottom: 16px;
@@ -590,13 +597,14 @@ body {
   flex: 0 0 34px;
   height: 34px;
   border-radius: 10px;
-  background: var(--buk-blue);
-  color: #ffffff;
+  background: #ffffff;
+  border: 1.5px solid var(--buk-blue);
+  color: var(--buk-blue);
   display: grid;
   place-items: center;
   font-size: 12px;
   font-weight: 800;
-  box-shadow: 0 4px 10px rgba(11, 92, 142, 0.2);
+  box-shadow: none;
 }
 
 .step h3 {
@@ -721,7 +729,8 @@ body {
   height: 28px;
   display: grid;
   place-items: center;
-  background: #eff6ff;
+  background: #ffffff;
+  border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--buk-blue);
   font-size: 11px;
@@ -956,18 +965,20 @@ body {
 
 .login-submit {
   height: 46px;
-  border: 0;
+  border: 1.5px solid var(--buk-blue);
   border-radius: 9px;
-  background: var(--buk-blue);
-  color: #ffffff;
+  background: #ffffff;
+  color: var(--buk-blue);
   font: 700 12px Inter;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(11, 92, 142, 0.2);
+  box-shadow: none;
   transition: 0.15s ease;
 }
 
 .login-submit:hover {
-  background: #084c76;
+  background: #f8fafc;
+  border-color: #084c76;
+  color: #084c76;
 }
 
 .login-submit:disabled {
